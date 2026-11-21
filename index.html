@@ -163,6 +163,15 @@ h1{font-family:var(--serif);font-weight:700;font-size:26px;letter-spacing:-.5px}
 .dact .fav.wide{flex:1}
 .dact .fav.on{border-color:var(--accent);color:var(--accent);background:var(--accentBg)}
 .dact .ask{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
+.recipe{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+.recipe h4{font-size:12px;color:var(--sub);font-weight:500;margin-bottom:8px}
+.recipe .from{font-size:11.5px;color:var(--faint);margin:-4px 0 8px}
+.recipe .sauce{font-size:14.5px;line-height:1.75;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 13px;white-space:pre-wrap;word-break:break-word}
+.recipe ol{list-style:none;counter-reset:st}
+.recipe li{counter-increment:st;position:relative;padding-left:32px;font-size:15px;line-height:1.7;margin-bottom:10px;word-break:keep-all}
+.recipe li::before{content:counter(st);position:absolute;left:0;top:2px;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.recipe + .recipe{margin-top:16px}
+.clr{float:right;font-size:12px;color:var(--accent);font-weight:500}
 .del{display:block;margin:20px auto 0;font-size:13px;color:var(--faint);text-decoration:underline;text-underline-offset:3px}
 .history{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
 .hlist{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
@@ -365,13 +374,17 @@ service cloud.firestore {
       <div class="field"><label>누가 만든 요리인가요</label><div class="seg" id="fCook"><button type="button" data-cook="wife">아내</button><button type="button" data-cook="husband">남편</button></div></div>
       <div class="field"><label for="fName">요리 이름</label>
         <input type="text" id="fName" list="names" placeholder="예) 차돌 된장찌개" maxlength="40" autocomplete="off"><datalist id="names"></datalist></div>
-      <div class="field"><label for="fDate">먹은 날</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fDate">먹은 날<button type="button" class="clr" id="fDateClr">날짜 없이 레시피로</button></label><input type="date" id="fDate"></div>
       <div class="field"><label>분류</label><div class="chips" id="fCats"></div></div>
       <div class="field"><label>들어간 재료<small>장보기에 바로 담을 수 있어요</small></label>
         <div class="chips" id="fIngs"></div>
         <div class="ingadd"><input type="text" id="fIngIn" list="itemNames" placeholder="예) 양파" maxlength="20" autocomplete="off" enterkeyhint="done"><button type="button" id="fIngAdd">추가</button></div>
         <datalist id="itemNames"></datalist>
       </div>
+      <div class="field"><label for="fSauce">양념 · 소스<small>선택</small></label>
+        <textarea id="fSauce" placeholder="예) 고추장 2큰술, 간장 2큰술, 설탕 1큰술…" maxlength="2000" style="min-height:72px"></textarea></div>
+      <div class="field"><label for="fSteps">만드는 법<small>줄을 바꾸면 순서대로 번호가 붙어요</small></label>
+        <textarea id="fSteps" placeholder="1단계&#10;2단계&#10;3단계" maxlength="4000" style="min-height:120px"></textarea></div>
       <div class="field"><label for="fMemo">메모</label>
         <textarea id="fMemo" placeholder="맛, 비법, 다음엔 이렇게…" maxlength="2000"></textarea></div>
       <div class="field"><div class="favrow"><div><p>또 해줘</p><small>다시 먹고 싶은 요리로 표시해요</small></div><button class="sw" id="fFav" type="button" aria-label="또 해줘"></button></div></div>
@@ -458,6 +471,37 @@ const DEFAULT_ITEMS = {
   '냉동·간편식': '냉동볶음밥 돈까스 치킨너겟 냉동피자 아이스크림',
   '생활용품': '키친타월 휴지 물티슈 주방세제 수세미 랩 지퍼백 쓰레기봉투 세탁세제 고무장갑',
 };
+/* 처음 넣어두는 레시피 (한 번만 들어감) */
+const SEED_KEY = 'seed-recipes-1';
+const SEED_RECIPES = [
+  { id:'r-dakgalbi', cook:'husband', name:'닭갈비', cat:'일품',
+    ingredients:['닭고기','양배추'],
+    sauce:'고춧가루 3큰술, 고추장 2큰술, 간장 3큰술, 설탕 2큰술, 소주 2큰술, 들기름 1큰술, 다시다 1큰술, 치킨스톡 1큰술, 후추 약간\n→ 잘 섞어 10분 정도 두어 고춧가루를 불린다.',
+    steps:'' },
+  { id:'r-sundae-gogi', cook:'husband', name:'순대고기볶음', cat:'일품',
+    ingredients:['고기','양배추','깻잎','들깨가루','찰순대'],
+    sauce:'고추장 2큰술, 간장 2큰술, 설탕 1큰술, 미원 조금, 치킨스톡 1큰술, 들기름 1큰술, 후추 많이, 청양고추가루, 다진마늘, 다시다 조금',
+    steps:'고기를 올리브유에 볶는다.\n어느 정도 익으면 들기름을 두르고 양배추, 순대, 들깨가루, 야채를 넣고 볶는다.\n숨이 죽으면 소스를 넣고 볶아준다.' },
+  { id:'r-sundae-woosam', cook:'husband', name:'순대우삼겹볶음', cat:'일품',
+    ingredients:['우삼겹','찰순대','숙주','양파','대파','청양고추'],
+    sauce:'고추장 1.5큰술, 고춧가루 1큰술, 간장 1큰술, 설탕 1큰술, 굴소스 1큰술, 맛술 1큰술, 다진마늘 0.5큰술, 후추 약간, 참기름 1큰술, 다시다 조금 (또는 미원)',
+    steps:'우삼겹을 강불에서 먼저 구워 기름을 충분히 낸다.\n고기 일부는 따로 빼두고, 남은 기름에 대파와 마늘을 넣어 볶아 향을 낸다.\n양파와 청양고추를 넣고 강불을 유지하며 볶는다.\n소스를 넣고 팬에 살짝 눌리듯 태워 불맛을 낸다.\n순대를 넣고 빠르게 섞는다.\n마지막에 숙주와 빼둔 고기를 넣어 30초 정도만 볶고 마무리한다.' },
+  { id:'r-gyeranjjim', cook:'husband', name:'계란찜', cat:'반찬',
+    ingredients:['계란','참치액','들기름','대파'],
+    sauce:'계란 1개당 물 70ml, 참치액 1스푼, 들기름 1스푼 (참기름도 가능)',
+    steps:'계란에 물, 참치액, 들기름을 넣고 섞어 8분 돌린다.\n한 번 저어주고 5분 더 돌린다.\n냉동 썰은 파를 넣고 2분 돌리면 완성.' },
+  { id:'r-naengjeyuk', cook:'husband', name:'냉제육', cat:'일품',
+    ingredients:['돼지 뒷다릿살(껍질 있는 것)'],
+    sauce:'다진 대파 1큰술, 다진 청양고추 1큰술, 다진마늘 1큰술, 간장 2큰술, 참치액 1큰술, 식초 1큰술, 설탕 작은 스푼, 참기름 1큰술, 고춧가루 1큰술, 통깨',
+    steps:'뒷다릿살을 잘 닦는다.\n끓는 물에 소금만 넣고 15분 끓인 뒤, 뚜껑을 닫고 1시간 둔다.\n키친타월로 물기를 잘 닦고 랩으로 감싼다.\n냉장고에서 5시간 이상 숙성한다. (무거운 걸로 눌러주면 좋고, 삶은 육수도 활용하면 좋음)' },
+  { id:'r-hwangtae-guk', cook:'husband', name:'황태계란국', cat:'국·찌개',
+    ingredients:['황태채','계란','대파','멸치·뒤포리 다시팩','참치액','국간장'],
+    sauce:'황태채 한 줌, 계란 2개, 대파 1/2대, 멸치·뒤포리 다시팩 1개, 참치액 1큰술, 국간장 1큰술, 후추 약간, 물 약 700ml',
+    steps:'냄비에 물 약 700ml와 다시팩을 넣고 5~7분 끓여 육수를 만든다.\n다시팩을 건져내고 황태채를 넣어 3분 정도 끓인다.\n참치액과 국간장으로 기본 간을 맞춘다.\n계란을 풀어두었다가 국물이 끓을 때 천천히 둘러 넣는다.\n젓지 말고 10초 정도 두었다가 숟가락으로 살짝만 푼다.\n송송 썬 대파와 후추를 넣고 30초 더 끓이면 완성.' },
+  { id:'r-ojingeo', cook:'wife', name:'오징어볶음', cat:'일품', fav:true,
+    ingredients:['오징어'], sauce:'', steps:'', memo:'해달라고 하면 맛있게 해주는 요리' },
+];
+
 const nameKey = s => String(s||'').replace(/\s+/g,'').toLowerCase();
 const hashId = s => { let h = 5381; for(const c of nameKey(s)) h = ((h << 5) + h + c.codePointAt(0)) >>> 0; return 'd' + h.toString(36); };
 
@@ -538,6 +582,8 @@ async function firebaseApi(){
     addRequest: (id, rec) => fs.setDoc(d('requests', id), rec),
     patchRequest: (id, p) => fs.updateDoc(d('requests', id), p),
     delRequest: (id) => fs.deleteDoc(d('requests', id)),
+    async getMeta(id){ const s = await fs.getDoc(d('meta', id)); return s.exists() ? s.data() : null; },
+    setMeta: (id, data) => fs.setDoc(d('meta', id), data),
     async writeItems(ops){
       for(let i = 0; i < ops.length; i += 400){
         const b = fs.writeBatch(store);
@@ -574,6 +620,8 @@ function demoApi(){
     addRequest: async (id, rec) => { st.requests[id] = rec; flush(); },
     patchRequest: async (id, p) => { deepSet(st.requests[id], p); flush(); },
     delRequest: async (id) => { delete st.requests[id]; flush(); },
+    getMeta: async (id) => (st.meta || {})[id] || null,
+    setMeta: async (id, data) => { (st.meta ||= {})[id] = data; flush(); },
     writeItems: async (ops) => { ops.forEach(o => { if(o.del) delete st.items[o.id]; else st.items[o.id] = Object.assign(st.items[o.id] || {}, o.data); }); flush(); },
   };
 }
@@ -594,7 +642,7 @@ async function startApp(){
   const slow = setTimeout(() => { if(!gotServer) $('#live').textContent = '오프라인'; }, 10000);
   api.subDishes((list, fromCache) => {
     dishes = list;
-    if(!fromCache){ gotServer = true; clearTimeout(slow); $('#live').textContent = '실시간'; $('#live').classList.add('on'); }
+    if(!fromCache){ gotServer = true; clearTimeout(slow); $('#live').textContent = '실시간'; $('#live').classList.add('on'); seedRecipes(); }
     renderDishes();
     if(viewingId){ if(dishes.some(i=>i.id===viewingId)) renderDetail(viewingId); else closeDetail(); }
     if(pendingDeepDish && dishes.some(i=>i.id===pendingDeepDish)){ const id = pendingDeepDish; pendingDeepDish = null; const dd = dishes.find(x=>x.id===id); setView(cookOf(dd)); openDetail(id); }
@@ -612,6 +660,25 @@ async function startApp(){
     renderShop(); renderBadge();
     if(viewingId) renderDetail(viewingId);
   }, () => { $('#catalog').innerHTML = '<p class="loading">재료 목록을 불러오지 못했어요.</p>'; });
+}
+let seedTried = false;
+async function seedRecipes(){
+  if(seedTried || ls.get('bapsang.' + SEED_KEY)) return;
+  seedTried = true;
+  try{
+    const done = await api.getMeta(SEED_KEY);
+    if(!done){
+      const base = Date.now();
+      for(const [i, r] of SEED_RECIPES.entries()){
+        if(dishes.some(x => x.id === r.id)) continue;
+        await api.saveDish(r.id, { name:r.name, date:'', memo:r.memo||'', cat:r.cat||'', fav:!!r.fav, cook:r.cook,
+          ingredients:r.ingredients||[], sauce:r.sauce||'', steps:r.steps||'', thumb:'', hasPhoto:false,
+          by:'husband', createdAt: base - i, updatedAt: base });
+      }
+      await api.setMeta(SEED_KEY, { at: Date.now() });
+    }
+    ls.set('bapsang.' + SEED_KEY, '1');
+  }catch(e){ seedTried = false; }
 }
 function seedItems(){
   const ops = [];
@@ -676,13 +743,14 @@ function renderDishes(){
   const all = sortedFor(view);
   const favN = all.filter(i=>i.fav).length;
   $('#cAll').textContent = all.length; $('#cFav').textContent = favN;
+  const dated = all.filter(i => i.date);
   const kinds = new Set(all.map(i=>i.name.trim())).size;
-  const monthN = all.filter(i=>(i.date||'').startsWith(today().slice(0,7))).length;
-  $('#stat').innerHTML = all.length ? `<b>${all.length}</b>번의 밥상 · ${kinds}가지 · 이번 달 ${monthN}번`
+  const monthN = dated.filter(i=>i.date.startsWith(today().slice(0,7))).length;
+  $('#stat').innerHTML = all.length ? (dated.length ? `<b>${dated.length}</b>번의 밥상 · ${kinds}가지 · 이번 달 ${monthN}번` : `할 수 있는 요리 <b>${kinds}</b>가지`)
     : (view === 'wife' ? '아내가 해준 요리를 하나씩 남겨요' : '내가 차린 밥상도 남겨둬요');
   let list = tab === 'fav' ? all.filter(i=>i.fav) : all;
   const q = query.trim().toLowerCase();
-  if(q) list = list.filter(i => (i.name+' '+(i.memo||'')+' '+(i.cat||'')+' '+(i.ingredients||[]).join(' ')).toLowerCase().includes(q));
+  if(q) list = list.filter(i => [i.name, i.memo, i.cat, i.sauce, i.steps, (i.ingredients||[]).join(' ')].join(' ').toLowerCase().includes(q));
   const el = $('#list');
   if(!all.length){
     el.innerHTML = view === 'wife'
@@ -692,15 +760,18 @@ function renderDishes(){
   }
   if(!list.length){ el.innerHTML = `<div class="empty">${q ? `‘${esc(query)}’에 해당하는 요리가 없어요` : '아직 ‘또 해줘’ 표시한 요리가 없어요.<br>기록을 열어 하트를 눌러보세요.'}</div>`; return; }
   const groups = new Map();
-  list.forEach(i => { const k = (i.date||'0000-00').slice(0,7); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
+  const undated = list.filter(i => !i.date).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+  if(undated.length) groups.set('recipe', undated);
+  list.filter(i => i.date).forEach(i => { const k = i.date.slice(0,7); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
   let html = '';
   for(const [k, arr] of groups){
     const [y,m] = k.split('-');
-    html += `<div class="month"><h2>${y}년 ${Number(m)}월</h2><small>${arr.length}개</small></div><div class="grid">` +
+    const title = k === 'recipe' ? (view === 'husband' ? '할 수 있는 요리' : '해달라고 하면 맛있는 요리') : `${y}년 ${Number(m)}월`;
+    html += `<div class="month"><h2>${title}</h2><small>${arr.length}개</small></div><div class="grid">` +
       arr.map(i => `<button class="card" data-id="${esc(i.id)}">
         <div class="thumb">${thumbTag(i) || `<div class="noimg">${initial(i)}</div>`}</div>
         <div class="cap"><span class="nm">${esc(i.name)}</span>${i.fav?`<span class="heart">${heartSvg(true,12)}</span>`:''}</div>
-        <div class="dt">${fmtShort(i.date)}${i.cat?` · ${esc(i.cat)}`:''}</div></button>`).join('') + `</div>`;
+        <div class="dt">${i.date ? fmtShort(i.date) : '레시피'}${i.cat?` · ${esc(i.cat)}`:''}</div></button>`).join('') + `</div>`;
   }
   el.innerHTML = html;
 }
@@ -805,9 +876,14 @@ $('#rSend').onclick = async () => {
 function renderDetail(id){
   const it = dishes.find(x=>x.id===id); if(!it) return;
   const cook = cookOf(it);
-  const same = sortedFor(cook).filter(x => x.name.trim() === it.name.trim()).reverse();
+  const sameAll = sortedFor(cook).filter(x => x.name.trim() === it.name.trim());
+  const same = sameAll.filter(x => x.date).reverse();
   const nth = same.findIndex(x=>x.id===id) + 1;
-  const others = same.filter(x=>x.id!==id).reverse();
+  const others = sameAll.filter(x => x.id !== id && x.date);
+  const note = (it.sauce || it.steps) ? it : sameAll.find(x => !x.date && (x.sauce || x.steps));
+  const steps = note ? String(note.steps||'').split(/\n+/).map(t=>t.trim()).filter(Boolean) : [];
+  const recipeHtml = note ? `${note.sauce ? `<div class="recipe"><h4>양념 · 소스</h4>${note !== it ? '<p class="from">레시피 노트에서 가져왔어요</p>' : ''}<div class="sauce">${esc(note.sauce)}</div></div>` : ''}
+    ${steps.length ? `<div class="recipe"><h4>만드는 법</h4>${note !== it && !note.sauce ? '<p class="from">레시피 노트에서 가져왔어요</p>' : ''}<ol>${steps.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}` : '';
   const full = fullPhotos.get(id);
   const ings = it.ingredients || [];
   const notIn = ings.filter(n => { const x = findItem(n); return !(x && x.inCart); });
@@ -817,17 +893,18 @@ function renderDetail(id){
     ${suggestText ? `<p class="suggest">${esc(suggestText)}</p>` : ''}
     ${img}
     <div class="dbody">
-      <div class="meta"><span>${fmtDate(it.date)}</span><i></i><span>${ROLE[cook]}의 요리</span>${it.cat?`<i></i><span>${esc(it.cat)}</span>`:''}</div>
+      <div class="meta"><span>${it.date ? fmtDate(it.date) : '레시피 노트'}</span><i></i><span>${ROLE[cook]}의 요리</span>${it.cat?`<i></i><span>${esc(it.cat)}</span>`:''}</div>
       <h2 class="dname">${esc(it.name)}</h2>
-      ${same.length > 1 ? `<span class="nth">${nth}번째 ${esc(it.name)} · 총 ${same.length}번</span>` : ''}
-      <div class="memo ${it.memo?'':'none'}">${it.memo ? esc(it.memo) : '메모 없음'}</div>
+      ${it.date && same.length > 1 ? `<span class="nth">${nth}번째 ${esc(it.name)} · 총 ${same.length}번</span>` : (!it.date && same.length ? `<span class="nth">지금까지 ${same.length}번 기록</span>` : '')}
+      ${it.memo || !recipeHtml ? `<div class="memo ${it.memo?'':'none'}">${it.memo ? esc(it.memo) : '메모 없음'}</div>` : ''}
+      ${recipeHtml}
       ${ings.length ? `<div class="dings"><h4>들어간 재료</h4><div class="chips">${ings.map(n => { const x = findItem(n); return `<span class="chip ${x && x.inCart ? 'in' : ''}">${esc(n)}</span>`; }).join('')}</div>
         <button class="cartbtn" id="dCart" ${notIn.length ? '' : 'disabled style="color:var(--faint)"'}>${cartSvg(17)} ${notIn.length ? `재료 ${notIn.length}개 장바구니에 담기` : '재료가 모두 장바구니에 있어요'}</button></div>` : ''}
       <div class="dact">
         <button class="fav ${it.fav?'on':''} ${canAsk?'':'wide'}" id="dFav" aria-label="또 해줘">${heartSvg(it.fav,16)}${canAsk ? '' : (it.fav ? ' 또 해줘 표시됨' : ' 또 해줘')}</button>
         ${canAsk ? `<button class="ask" id="dAsk">오늘 이거 해줘</button>` : ''}
       </div>
-      ${others.length ? `<div class="history"><h4>같은 요리, 다른 날</h4><div class="hlist">${others.map(o=>`
+      ${others.length ? `<div class="history"><h4>${it.date ? '같은 요리, 다른 날' : '이 요리를 해 먹은 날'}</h4><div class="hlist">${others.map(o=>`
         <button data-hid="${esc(o.id)}"><div class="t">${thumbTag(o) || `<div class="noimg" style="font-size:20px">${initial(o)}</div>`}</div><span>${fmtShort(o.date)}</span></button>`).join('')}</div></div>` : ''}
       <button class="del" id="dDel">이 기록 삭제</button>
     </div>`;
@@ -868,6 +945,7 @@ function addIng(){
   $('#fIngIn').value = ''; renderIngs(); $('#fIngIn').focus();
 }
 $('#fIngAdd').onclick = addIng;
+$('#fDateClr').onclick = () => { $('#fDate').value = ''; toast('날짜 없이 레시피 노트로 저장돼요'); };
 $('#fIngIn').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addIng(); } });
 $('#fCook').addEventListener('click', e => { const b = e.target.closest('[data-cook]'); if(b){ editing.cook = b.dataset.cook; renderCook(); } });
 
@@ -884,8 +962,10 @@ function openForm(id, fromReq){
   };
   $('#fTitle').textContent = it ? '기록 편집' : '새 기록';
   $('#fName').value = it ? it.name : (fromReq ? fromReq.name : '');
-  $('#fDate').value = it ? it.date : today();
+  $('#fDate').value = it ? (it.date || '') : today();
   $('#fMemo').value = it ? (it.memo||'') : '';
+  $('#fSauce').value = it ? (it.sauce||'') : '';
+  $('#fSteps').value = it ? (it.steps||'') : '';
   $('#fIngIn').value = '';
   $('#fFav').classList.toggle('on', editing.fav);
   setPhotoPreview(it ? (fullPhotos.get(it.id) || it.thumb || '') : '');
@@ -903,7 +983,8 @@ async function submitForm(){
   const old = editing.id ? dishes.find(x=>x.id===editing.id) : null;
   const id = editing.id || rid(12);
   const rec = {
-    name, date: $('#fDate').value || today(), memo: $('#fMemo').value.trim(), cat: editing.cat || '', fav: !!editing.fav,
+    name, date: $('#fDate').value || '', memo: $('#fMemo').value.trim(), cat: editing.cat || '', fav: !!editing.fav,
+    sauce: $('#fSauce').value.trim(), steps: $('#fSteps').value.trim(),
     cook: editing.cook, ingredients: editing.ings.slice(),
     thumb: old ? (old.thumb || '') : '', hasPhoto: old ? !!old.hasPhoto : false,
     by: old ? (old.by || role) : role, createdAt: old ? (old.createdAt || Date.now()) : Date.now(), updatedAt: Date.now()
